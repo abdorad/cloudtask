@@ -1,0 +1,28 @@
+# Build output
+target/
+build/
+dist/
+out/
+
+# Dependencies
+node_modules/
+
+# Runtime and logs
+*.log
+*.pid
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
