@@ -11,12 +11,13 @@ upload CSV -> create task -> worker processing -> JSON report -> result download
 
 ## Current Status
 
-Phase 0 is complete when this documentation is validated. No complete business
-feature has been implemented yet.
+Phase 0 is complete: repository preparation, specifications, architecture, API
+contract, and backlog are documented. No business feature has been implemented
+yet.
 
-The next planned lot is the MVP: a local Spring Boot backend with PostgreSQL,
-CSV upload, task creation, one worker, JSON report generation, status lookup,
-and result download.
+The next planned lot is Phase 1, the MVP: a local Spring Boot backend with
+PostgreSQL, one multipart CSV upload-and-task endpoint, one worker, JSON report
+generation, status lookup, result download, and cancellation request.
 
 ## Target Stack
 
@@ -24,8 +25,8 @@ and result download.
 - Spring Boot for the API.
 - Maven for build and tests.
 - PostgreSQL for users, tasks, statuses, and errors.
-- RabbitMQ for distributed workers in V2.
-- MinIO for S3-compatible local object storage in V2.
+- RabbitMQ for distributed workers in Phase 2.
+- MinIO for S3-compatible local object storage in Phase 2.
 - Docker Compose for local orchestration.
 - Prometheus and Grafana for observability in a later phase.
 - Kubernetes only after the Docker Compose version is stable.

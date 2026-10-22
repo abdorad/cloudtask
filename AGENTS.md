@@ -8,8 +8,9 @@ incremental, testable, and explainable by a third-year undergraduate student.
 
 ## Current Phase
 
-Phase 0 only: documentation, architecture, Maven structure proposal, backlog,
-and repository preparation. Do not implement complete business features yet.
+Phase 0 is documented and committed. The next authorized implementation phase is
+Phase 1: the MVP. Do not start Phase 2 distributed infrastructure, security,
+frontend, monitoring, or Kubernetes until the MVP is stable.
 
 ## Product Goal
 
@@ -52,7 +53,8 @@ The domain status values are:
 ## Engineering Rules
 
 - Build one phase at a time.
-- Do not start Kubernetes, Terraform, Helm, frontend, or monitoring during the MVP.
+- Do not start RabbitMQ, MinIO, Kubernetes, Terraform, Helm, frontend, or
+  monitoring during the MVP.
 - Avoid unnecessary microservices.
 - Keep domain, application, infrastructure, and API concerns separated.
 - Prefer modular or hexagonal architecture.

@@ -8,22 +8,20 @@ This is a planning document for Phase 0. The API is not implemented yet.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/files` | Upload a CSV file and return file metadata. |
-| `POST` | `/api/tasks` | Create an asynchronous task for an uploaded file. |
-| `GET` | `/api/tasks/{id}` | Get task details and current status. |
-| `GET` | `/api/tasks` | List tasks. |
-| `GET` | `/api/tasks/{id}/result` | Download or retrieve the generated result. |
+| `POST` | `/api/v1/tasks` | Upload a CSV file and create an asynchronous task. |
+| `GET` | `/api/v1/tasks/{id}` | Get task details and current status. |
+| `GET` | `/api/v1/tasks` | List tasks. |
+| `GET` | `/api/v1/tasks/{id}/result` | Download the generated JSON report. |
+| `DELETE` | `/api/v1/tasks/{id}` | Request cancellation when the task has not completed. |
 | `GET` | `/actuator/health` | Health endpoint provided by Spring Boot Actuator. |
 
 ## Later Routes
 
 | Method | Route | Phase | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | V3 | Register a user. |
-| `POST` | `/api/auth/login` | V3 | Authenticate and receive a JWT. |
-| `POST` | `/api/auth/refresh` | V3 | Refresh or renew access. |
-| `DELETE` | `/api/tasks/{id}` | V3 | Delete a task and its files securely. |
-| `POST` | `/api/tasks/{id}/cancel` | V3+ | Request task cancellation. |
+| `POST` | `/api/v1/auth/register` | Phase 3 | Register a user. |
+| `POST` | `/api/v1/auth/login` | Phase 3 | Authenticate and receive a JWT. |
+| `POST` | `/api/v1/auth/refresh` | Phase 3 | Refresh or renew access. |
 
 ## Public Identifiers
 
@@ -35,25 +33,17 @@ All externally exposed resources must use UUID identifiers:
 
 ## Planned Request Examples
 
-### Upload CSV
+### Upload CSV And Create Task
 
 ```http
-POST /api/files
+POST /api/v1/tasks
 Content-Type: multipart/form-data
 ```
 
 Form field:
 
 - `file`: CSV file.
-
-### Create Task
-
-```json
-{
-  "fileId": "00000000-0000-0000-0000-000000000000",
-  "processingType": "CSV_ANALYSIS"
-}
-```
+- `processingType`: `CSV_ANALYSIS`.
 
 ### Task Response
 
@@ -88,7 +78,7 @@ The implementation should use one central error format:
   "status": 400,
   "error": "Bad Request",
   "message": "CSV file is required",
-  "path": "/api/files",
+  "path": "/api/v1/tasks",
   "correlationId": "00000000-0000-0000-0000-000000000000"
 }
 ```

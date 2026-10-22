@@ -47,12 +47,11 @@ upload CSV -> create task -> worker processes task -> result generated -> user d
 | `RETRYING` | Processing failed temporarily and will be retried. |
 | `CANCELLED` | Task was cancelled before successful completion. |
 
-## MVP Functional Requirements
+## Phase 1: MVP Functional Requirements
 
 The MVP will provide one end-to-end CSV processing path:
 
-- upload a CSV file;
-- create a task for the uploaded file;
+- upload a CSV file and create its task in one request;
 - process the task with one local worker;
 - generate a JSON report;
 - view task status;
@@ -73,8 +72,8 @@ The minimal CSV report must include:
 - Maven for compilation and tests.
 - PostgreSQL for users, tasks, statuses, and errors.
 - Database migrations.
-- RabbitMQ for distributed task execution in V2.
-- MinIO locally as an S3-compatible object store in V2.
+- RabbitMQ for distributed task execution in Phase 2.
+- MinIO locally as an S3-compatible object store in Phase 2.
 - Docker and Docker Compose.
 - Prometheus and Grafana in a later observability phase.
 - Kubernetes only after the Docker Compose version is stable.
@@ -115,7 +114,7 @@ documented fallback.
 
 - Should CloudTask be single-tenant first, then multi-tenant later?
 - Which CSV size limit is acceptable for the MVP?
-- Which authentication flow is preferred for V3?
+- Which authentication flow is preferred for Phase 3?
 - Should the worker be a separate Maven module from the first MVP, or split only
   when RabbitMQ is introduced?
 - Which deployment target will be used for portfolio demonstration?

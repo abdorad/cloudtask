@@ -1,22 +1,22 @@
 # CloudTask Backlog
 
-## MVP: Local End-To-End Backend
+## Phase 1: MVP Functional
 
 Goal: prove the complete CSV task workflow with the smallest useful backend.
 
 - Spring Boot API module.
 - PostgreSQL persistence.
 - Database migrations.
-- `Task` entity with UUID public ID.
+- `Task` entity with UUID public ID and lifecycle states.
 - Local temporary file storage behind a `FileStorage` interface.
 - One processing type: `CSV_ANALYSIS`.
 - One local worker or background executor behind a `TaskDispatcher` interface.
 - REST routes:
-  - `POST /api/files`
-  - `POST /api/tasks`
-  - `GET /api/tasks/{id}`
-  - `GET /api/tasks`
-  - `GET /api/tasks/{id}/result`
+  - `POST /api/v1/tasks` (multipart CSV upload and task creation)
+  - `GET /api/v1/tasks/{id}`
+  - `GET /api/v1/tasks`
+  - `GET /api/v1/tasks/{id}/result`
+  - `DELETE /api/v1/tasks/{id}`
   - `GET /actuator/health`
 - JSON report containing row count, columns, estimated types, missing values,
   and simple numeric statistics.
@@ -25,7 +25,7 @@ Goal: prove the complete CSV task workflow with the smallest useful backend.
 - README curl examples.
 - Unit tests and PostgreSQL integration tests with Testcontainers.
 
-## V2: Distributed Processing
+## Phase 2: Distributed Architecture
 
 Goal: replace local processing and local storage with distributed components.
 
@@ -48,7 +48,7 @@ Goal: replace local processing and local storage with distributed components.
 - Testcontainers tests for PostgreSQL, RabbitMQ, MinIO, retries, DLQ,
   duplicates, and end-to-end processing.
 
-## V3: Security And Users
+## Phase 3: Industrialization And Security
 
 Goal: make CloudTask multi-user and protect user data.
 
@@ -71,7 +71,7 @@ Goal: make CloudTask multi-user and protect user data.
 - Security tests for authentication, authorization, validation, deletion, and
   rate limiting.
 
-## V4: Frontend And Product UX
+## Phase 4: Supervision And Product UX
 
 Goal: provide a simple professional web interface over the stable API.
 

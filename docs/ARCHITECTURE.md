@@ -54,10 +54,10 @@ flowchart LR
 | Phase | Goal | Main technologies |
 | --- | --- | --- |
 | Phase 0 | Documentation and architecture | Git, Maven skeleton, Markdown |
-| MVP | Local end-to-end backend | Spring Boot, PostgreSQL, local storage, local worker |
-| V2 | Distributed execution | RabbitMQ, MinIO, Docker Compose |
-| V3 | Security and users | JWT, BCrypt, authorization, validation limits |
-| V4 | Frontend and operations | React, CI/CD, Prometheus, Grafana |
+| Phase 1 | MVP functional | Spring Boot, PostgreSQL, local storage, local worker |
+| Phase 2 | Distributed architecture | RabbitMQ, MinIO, multiple workers, retries, DLQ |
+| Phase 3 | Industrialization | Docker Compose, CI/CD, security, integration tests |
+| Phase 4 | Supervision and product UX | Prometheus, Grafana, React frontend |
 | Later | Orchestration | Kubernetes, optional Helm/Terraform |
 
 ## Proposed Maven Architecture
@@ -122,16 +122,16 @@ com.cloudtask.<module>/
 
 ### Storage
 
-The MVP may use temporary local storage behind an interface. V2 replaces that
+Phase 1 may use temporary local storage behind an interface. Phase 2 replaces that
 implementation with MinIO/S3 without changing application use cases.
 
 ### Messaging
 
-The MVP may use a local in-process dispatching mechanism behind an interface.
-V2 replaces that implementation with RabbitMQ queues, retries, and a dead-letter
+Phase 1 may use a local in-process dispatching mechanism behind an interface.
+Phase 2 replaces that implementation with RabbitMQ queues, retries, and a dead-letter
 queue.
 
-## Key Interfaces To Introduce In The MVP
+## Key Interfaces To Introduce In Phase 1
 
 - `FileStorage`: stores uploaded files and generated results.
 - `TaskRepository`: persists and loads tasks.
@@ -149,8 +149,8 @@ queue.
 | PostgreSQL | Reliable relational storage for task metadata, users, statuses, and errors. |
 | UUID public identifiers | Avoid exposing sequential internal IDs. |
 | File contents outside PostgreSQL | Heavy files belong in object storage or local storage, not relational rows. |
-| RabbitMQ in V2 | Adds durable asynchronous processing after the local MVP is understood. |
-| MinIO in V2 | Gives local S3-compatible object storage without cloud credentials. |
+| RabbitMQ in Phase 2 | Adds durable asynchronous processing after the local MVP is understood. |
+| MinIO in Phase 2 | Gives local S3-compatible object storage without cloud credentials. |
 | Kubernetes later | Avoids infrastructure complexity before Docker Compose is stable. |
 
 ## Assumptions
@@ -158,7 +158,7 @@ queue.
 - The first implementation is local and developer-focused.
 - CSV analysis is the first and only MVP processing type.
 - PostgreSQL is required from the MVP for realistic persistence.
-- RabbitMQ and MinIO are important, but intentionally delayed to V2.
+- RabbitMQ and MinIO are important, but intentionally delayed to Phase 2.
 - The frontend starts only after API behavior is stable.
 
 ## Risks
