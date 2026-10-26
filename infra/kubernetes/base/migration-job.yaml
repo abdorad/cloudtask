@@ -1,0 +1,26 @@
+# Apply this job after creating cloudtask-secrets and before deploying the API or worker.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloudtask-migrate
+  namespace: cloudtask
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: ghcr.io/CHANGE_ME/cloudtask-api:CHANGE_ME
+          command: ["/app/run-migrations.sh"]
+          envFrom:
+            - configMapRef:
+                name: cloudtask-config
+            - secretRef:
+                name: cloudtask-secrets
+          env:
+            - name: CLOUDTASK_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cloudtask-secrets
+                  key: CLOUDTASK_MIGRATION_DATABASE_URL

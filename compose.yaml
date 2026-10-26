@@ -1,0 +1,205 @@
+name: cloudtask
+
+x-application-environment: &application-environment
+  CLOUDTASK_DATABASE_URL: postgresql+psycopg://${CLOUDTASK_POSTGRES_APPLICATION_USER:-${CLOUDTASK_POSTGRES_USER:?Set CLOUDTASK_POSTGRES_USER in .env}}:${CLOUDTASK_POSTGRES_APPLICATION_PASSWORD:-${CLOUDTASK_POSTGRES_PASSWORD:?Set CLOUDTASK_POSTGRES_PASSWORD in .env}}@postgres:5432/${CLOUDTASK_POSTGRES_DB:-cloudtask}
+  CLOUDTASK_RABBITMQ_URL: amqp://${CLOUDTASK_RABBITMQ_USER}:${CLOUDTASK_RABBITMQ_PASSWORD}@rabbitmq:5672/
+  CLOUDTASK_S3_ENDPOINT_URL: http://minio:9000
+  CLOUDTASK_S3_ACCESS_KEY: ${CLOUDTASK_MINIO_ROOT_USER}
+  CLOUDTASK_S3_SECRET_KEY: ${CLOUDTASK_MINIO_ROOT_PASSWORD}
+  CLOUDTASK_S3_BUCKET: ${CLOUDTASK_S3_BUCKET:-cloudtask}
+  CLOUDTASK_CORS_ORIGINS: ${CLOUDTASK_CORS_ORIGINS:-http://localhost:3000}
+  CLOUDTASK_UPLOAD_MAX_BYTES: ${CLOUDTASK_UPLOAD_MAX_BYTES:-20971520}
+  CLOUDTASK_MAX_ATTEMPTS: ${CLOUDTASK_MAX_ATTEMPTS:-3}
+  CLOUDTASK_RETRY_DELAY_SECONDS: ${CLOUDTASK_RETRY_DELAY_SECONDS:-10}
+  CLOUDTASK_S3_MAX_ATTEMPTS: ${CLOUDTASK_S3_MAX_ATTEMPTS:-3}
+  CLOUDTASK_S3_CONNECT_TIMEOUT_SECONDS: ${CLOUDTASK_S3_CONNECT_TIMEOUT_SECONDS:-3}
+  CLOUDTASK_S3_READ_TIMEOUT_SECONDS: ${CLOUDTASK_S3_READ_TIMEOUT_SECONDS:-10}
+  CLOUDTASK_JWT_SECRET: ${CLOUDTASK_JWT_SECRET:-}
+  CLOUDTASK_JWT_EXPIRY_MINUTES: ${CLOUDTASK_JWT_EXPIRY_MINUTES:-480}
+  CLOUDTASK_RATE_LIMIT_REQUESTS: ${CLOUDTASK_RATE_LIMIT_REQUESTS:-120}
+  CLOUDTASK_RATE_LIMIT_UPLOADS: ${CLOUDTASK_RATE_LIMIT_UPLOADS:-10}
+  CLOUDTASK_RATE_LIMIT_LOGIN_ATTEMPTS: ${CLOUDTASK_RATE_LIMIT_LOGIN_ATTEMPTS:-10}
+  CLOUDTASK_RATE_LIMIT_WINDOW_SECONDS: ${CLOUDTASK_RATE_LIMIT_WINDOW_SECONDS:-60}
+  CLOUDTASK_OUTBOX_POLL_SECONDS: ${CLOUDTASK_OUTBOX_POLL_SECONDS:-5}
+  CLOUDTASK_TASK_LEASE_SECONDS: ${CLOUDTASK_TASK_LEASE_SECONDS:-300}
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: ${CLOUDTASK_POSTGRES_USER:?Set CLOUDTASK_POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${CLOUDTASK_POSTGRES_PASSWORD:?Set CLOUDTASK_POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${CLOUDTASK_POSTGRES_DB:-cloudtask}
+      CLOUDTASK_POSTGRES_MIGRATION_USER: ${CLOUDTASK_POSTGRES_MIGRATION_USER:-${CLOUDTASK_POSTGRES_USER:?Set CLOUDTASK_POSTGRES_USER in .env}}
+      CLOUDTASK_POSTGRES_MIGRATION_PASSWORD: ${CLOUDTASK_POSTGRES_MIGRATION_PASSWORD:-${CLOUDTASK_POSTGRES_PASSWORD:?Set CLOUDTASK_POSTGRES_PASSWORD in .env}}
+      CLOUDTASK_POSTGRES_APPLICATION_USER: ${CLOUDTASK_POSTGRES_APPLICATION_USER:-${CLOUDTASK_POSTGRES_USER:?Set CLOUDTASK_POSTGRES_USER in .env}}
+      CLOUDTASK_POSTGRES_APPLICATION_PASSWORD: ${CLOUDTASK_POSTGRES_APPLICATION_PASSWORD:-${CLOUDTASK_POSTGRES_PASSWORD:?Set CLOUDTASK_POSTGRES_PASSWORD in .env}}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3.13.7-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${CLOUDTASK_RABBITMQ_USER:?Set CLOUDTASK_RABBITMQ_USER in .env}
+      RABBITMQ_DEFAULT_PASS: ${CLOUDTASK_RABBITMQ_PASSWORD:?Set CLOUDTASK_RABBITMQ_PASSWORD in .env}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+
+  minio:
+    image: chainguard/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${CLOUDTASK_MINIO_ROOT_USER:?Set CLOUDTASK_MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${CLOUDTASK_MINIO_ROOT_PASSWORD:?Set CLOUDTASK_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  config-check:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: /app/validate-config.sh
+    environment:
+      <<: *application-environment
+      CLOUDTASK_BOOTSTRAP_USER_EMAIL: ${CLOUDTASK_BOOTSTRAP_USER_EMAIL:-}
+      CLOUDTASK_BOOTSTRAP_USER_PASSWORD: ${CLOUDTASK_BOOTSTRAP_USER_PASSWORD:-}
+      CLOUDTASK_POSTGRES_APPLICATION_ROLE_PARTS: "${CLOUDTASK_POSTGRES_APPLICATION_USER:+u}${CLOUDTASK_POSTGRES_APPLICATION_PASSWORD:+p}"
+      CLOUDTASK_POSTGRES_MIGRATION_ROLE_PARTS: "${CLOUDTASK_POSTGRES_MIGRATION_USER:+u}${CLOUDTASK_POSTGRES_MIGRATION_PASSWORD:+p}"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: /app/run-migrations.sh
+    environment:
+      <<: *application-environment
+      CLOUDTASK_DATABASE_URL: postgresql+psycopg://${CLOUDTASK_POSTGRES_MIGRATION_USER:-${CLOUDTASK_POSTGRES_USER:?Set CLOUDTASK_POSTGRES_USER in .env}}:${CLOUDTASK_POSTGRES_MIGRATION_PASSWORD:-${CLOUDTASK_POSTGRES_PASSWORD:?Set CLOUDTASK_POSTGRES_PASSWORD in .env}}@postgres:5432/${CLOUDTASK_POSTGRES_DB:-cloudtask}
+    depends_on:
+      config-check:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  init-user:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python /app/create-initial-user.py
+    environment:
+      <<: *application-environment
+      CLOUDTASK_BOOTSTRAP_USER_EMAIL: ${CLOUDTASK_BOOTSTRAP_USER_EMAIL:-}
+      CLOUDTASK_BOOTSTRAP_USER_PASSWORD: ${CLOUDTASK_BOOTSTRAP_USER_PASSWORD:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment: *application-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      init-user:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.worker.main
+    environment: *application-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8001/metrics', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:80"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${CLOUDTASK_GRAFANA_ADMIN_PASSWORD:?Set CLOUDTASK_GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    ports:
+      - "127.0.0.1:3001:3000"
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:
+  prometheus-data:
+  grafana-data:

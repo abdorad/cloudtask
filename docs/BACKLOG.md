@@ -1,191 +1,44 @@
 # CloudTask Backlog
 
-## Phase 1: MVP Functional
+## Delivered implementation
 
-Goal: prove the complete CSV task workflow with the smallest useful backend.
+- Python 3.12 FastAPI API and separate Python worker process.
+- Operator authentication, owner-scoped tasks, and protected report downloads.
+- Argon2 password hashes, expiring JWT bearer tokens, and deployment bootstrap account creation.
+- Durable outbox reconciliation and stale-processing recovery.
+- Process-local request/upload/login rate limits and normalized API metric route labels.
+- PostgreSQL task persistence and first Alembic migration.
+- RabbitMQ durable task delivery, TTL retry, and dead-letter queue topology.
+- MinIO/S3-compatible input and report storage.
+- CSV validation, profiling, task status API, and report streaming.
+- React JavaScript dashboard with upload feedback, status polling, and report download.
+- Docker Compose configuration for app, data services, and monitoring.
+- Prometheus metrics, Grafana datasource/dashboard provisioning, and Kubernetes app manifests.
+- Unit tests for validation, CSV analysis, and worker behavior; Testcontainers database integration test; React component test.
 
-- Spring Boot API module.
-- PostgreSQL persistence.
-- Database migrations.
-- `Task` entity with UUID public ID and lifecycle states.
-- Local temporary file storage behind a `FileStorage` interface.
-- One processing type: `CSV_ANALYSIS`.
-- One local worker or background executor behind a `TaskDispatcher` interface.
-- REST routes:
-  - `POST /api/v1/tasks` (multipart CSV upload and task creation)
-  - `GET /api/v1/tasks/{id}`
-  - `GET /api/v1/tasks`
-  - `GET /api/v1/tasks/{id}/result`
-  - `DELETE /api/v1/tasks/{id}`
-  - `GET /actuator/health`
-- JSON report containing row count, columns, estimated types, missing values,
-  and simple numeric statistics.
-- OpenAPI/Swagger documentation.
-- `.env.example`.
-- README curl examples.
-- Unit tests and PostgreSQL integration tests with Testcontainers.
+## Manual verification still required
 
-## Phase 2: Distributed Architecture
+1. Install local Python and Node dependencies.
+2. Run unit, integration, and frontend tests.
+3. Start Docker Compose and perform the upload-to-report walkthrough, including fresh-volume PostgreSQL role setup or existing-volume legacy-role compatibility, migration completion, API readiness, and worker metrics after queue registration.
+4. Inspect retry/dead-letter behavior by temporarily making the worker's object-storage connection unavailable.
+5. Validate image tags and manifests against the target Docker/Kubernetes environment before publishing.
 
-Goal: replace local processing and local storage with distributed components.
+## Next product priorities
 
-- RabbitMQ exchange, processing queue, dead-letter exchange, and dead-letter
-  queue.
-- Versioned messages with `correlationId`.
-- Retry policy with progressive delay.
-- Maximum attempt count.
-- Idempotent worker behavior for duplicate messages.
-- MinIO input and output buckets.
-- S3-compatible `ObjectStorage` implementation.
-- Temporary download links.
-- Docker Compose with services:
-  - `api`
-  - `worker`
-  - `postgres`
-  - `rabbitmq`
-  - `minio`
-- Healthchecks, volumes, internal network, and environment variables.
-- Testcontainers tests for PostgreSQL, RabbitMQ, MinIO, retries, DLQ,
-  duplicates, and end-to-end processing.
+1. Replace the process-local rate limiter with a shared edge or Redis-backed limiter before scaling the API.
+2. Add password reset, account lifecycle controls, and a production identity provider if multiple operators are needed.
+3. Add a distributed worker lease/heartbeat for improved multi-worker coordination.
+4. Add report retention policies and scheduled cleanup for MinIO objects and old task rows.
+5. Add rate limiting, content malware scanning, and more complete CSV dialect/encoding support.
+6. Add pagination totals, filtering, task deletion semantics, and real-time progress delivery if the product needs them.
+7. Add CI that runs the existing tests, builds images, and scans dependencies.
+8. Add production backups, TLS, ingress policies, alert rules, and managed stateful services.
 
-## Phase 3: Industrialization And Security
+## Intentionally deferred
 
-Goal: make CloudTask multi-user and protect user data.
-
-- User registration and login.
-- JWT authentication.
-- BCrypt password hashing.
-- Token expiration or refresh policy.
-- Protected task and file routes.
-- Per-user task and file authorization.
-- Secure task deletion with file cleanup.
-- Sensitive action audit logs.
-- Configurable upload size limit.
-- MIME type and extension validation.
-- Filename sanitization.
-- Empty file rejection.
-- Path traversal protection.
-- Basic rate limiting.
-- Configurable CORS.
-- No sensitive data in logs.
-- Security tests for authentication, authorization, validation, deletion, and
-  rate limiting.
-
-## Phase 4: Supervision And Product UX
-
-Goal: provide a simple professional web interface over the stable API.
-
-- React with Vite and TypeScript.
-- Responsive UI.
-- Registration and login screens.
-- Dashboard.
-- CSV upload.
-- Task creation.
-- Task list.
-- Task detail.
-- Result download.
-- Clear error display.
-- Reasonable status polling.
-- Visible statuses:
-  - `PENDING`
-  - `PROCESSING`
-  - `COMPLETED`
-  - `FAILED`
-  - `RETRYING`
-  - `CANCELLED`
-- Frontend tests for forms, authentication, dashboard, and upload-to-result
-  workflow.
-- Add frontend to Docker Compose.
-
-## CI/CD
-
-Goal: make quality checks repeatable on every push and pull request.
-
-- GitHub Actions workflow.
-- Maven compile and tests.
-- Frontend build and tests.
-- Integration tests.
-- Dependency vulnerability analysis.
-- Docker image builds.
-- Publish images only on the main branch.
-- Maven and npm caches.
-- Test reports and coverage.
-- README badge after workflow exists.
-- Document required CI secrets.
-
-## Observability
-
-Goal: make runtime behavior visible and diagnosable.
-
-- Spring Boot Actuator.
-- Micrometer.
-- Prometheus metrics endpoint.
-- JSON structured logs.
-- `correlationId` propagation from API to worker.
-- Business metrics:
-  - total tasks;
-  - tasks by status;
-  - successes;
-  - failures;
-  - retries;
-  - average duration;
-  - RabbitMQ queue size;
-  - average file size.
-- System metrics:
-  - CPU;
-  - memory;
-  - active workers;
-  - restarts;
-  - API response time.
-- Versioned Grafana dashboard.
-- Alerts for high failure rate, saturated queue, missing workers, and slow
-  processing.
-
-## Kubernetes
-
-Goal: prepare local Kubernetes deployment after the Docker version is stable.
-
-- Namespace.
-- ConfigMaps.
-- Fake-value Secrets only.
-- API Deployment and Service.
-- Worker Deployment.
-- Frontend Deployment and Service.
-- PostgreSQL demonstration deployment.
-- RabbitMQ.
-- MinIO.
-- Prometheus.
-- Grafana.
-- Ingress.
-- PersistentVolumeClaims.
-- Readiness and liveness probes.
-- Resource requests and limits.
-- HorizontalPodAutoscaler for workers.
-- Local validation with kind or minikube.
-
-## Extensions
-
-- Helm chart.
-- Terraform for cloud infrastructure.
-- Additional file processors.
-- Multi-tenant organization model.
-- Admin dashboard.
-- Webhooks on task completion.
-- Advanced CSV profiling.
-- Object lifecycle policies.
-- Production managed services for PostgreSQL, RabbitMQ, and object storage.
-
-## Final Portfolio Preparation
-
-- Secret scan.
-- Remove unused code.
-- Verify tests, Docker Compose, Kubernetes manifests, dependencies, and docs.
-- Professional README.
-- ADRs for important decisions.
-- `CONTRIBUTING.md`.
-- License.
-- Release notes.
-- CV description.
-- LinkedIn description.
-- Two-minute demo script.
-- Interview question and answer set.
+- Multi-tenant organizations and billing.
+- Cancellation lifecycle and task ownership.
+- Large-scale streaming analysis and multiple processing types.
+- Helm charts or Terraform.
+- A Kubernetes deployment for PostgreSQL, RabbitMQ, MinIO, Prometheus, and Grafana. Production deployments should choose supported operators or managed services instead.

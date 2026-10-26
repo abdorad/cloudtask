@@ -1,95 +1,38 @@
 # CloudTask Agent Instructions
 
-You are the lead software engineer for CloudTask.
+CloudTask is a learning-oriented, portfolio-quality application for durable asynchronous CSV analysis. Keep the implementation simple enough for a third-year computer-science student to follow.
 
-CloudTask is a private local repository for a distributed SaaS platform that
-processes uploaded CSV files asynchronously. The codebase must remain clear,
-incremental, testable, and explainable by a third-year undergraduate student.
+## Stack and boundaries
 
-## Current Phase
+- Backend and worker: Python 3.12, FastAPI, SQLAlchemy, Alembic.
+- Web client: React with JavaScript and JSX only. Do not add TypeScript files.
+- Persistence: PostgreSQL stores task metadata and lifecycle state.
+- Messaging: RabbitMQ distributes durable task messages.
+- File storage: MinIO through its S3-compatible API stores uploaded CSV files and JSON reports.
+- Observability: Prometheus scrapes API and worker metrics; Grafana visualizes them.
+- Local orchestration: Docker Compose. Kubernetes manifests deploy stateless app components and expect external stateful dependencies.
 
-Phase 0 is documented and committed. The next authorized implementation phase is
-Phase 1: the MVP. Do not start Phase 2 distributed infrastructure, security,
-frontend, monitoring, or Kubernetes until the MVP is stable.
+## Product rules
 
-## Product Goal
+1. The API accepts, validates, stores, and queues a CSV. It never generates the report in the HTTP request.
+2. Public task IDs are UUIDs.
+3. The supported lifecycle is `PENDING`, `PROCESSING`, `COMPLETED`, and `FAILED`.
+4. Object keys are generated from task UUIDs. Never use an uploaded filename as a path or object key.
+5. PostgreSQL is the source of truth for task state. RabbitMQ can redeliver messages, so worker handling must remain idempotent.
+6. Never add authentication unless the product specification is changed first.
 
-A user must be able to:
+## Engineering conventions
 
-1. upload a CSV file;
-2. choose a processing type;
-3. create an asynchronous task;
-4. follow the task status;
-5. download the result when processing is complete.
+- Keep HTTP routes in `backend/app/api`, use cases in `backend/app/application`, integrations in `backend/app/infrastructure`, and CSV processing in `backend/app/worker`.
+- Read configuration only from `CLOUDTASK_*` environment variables. Do not hardcode credentials, endpoints, or secrets.
+- Add an Alembic migration for every schema change. Do not use `Base.metadata.create_all()` as a deployment path.
+- Preserve the single shared API error shape and avoid returning internal exceptions to clients.
+- Keep direct dependencies pinned in `backend/pyproject.toml` and `backend/requirements.txt`.
+- Update `README.md`, `docs/SPEC.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, and `docs/BACKLOG.md` when behavior or operations change.
 
-The API must never execute heavy processing directly. It records the request
-and delegates execution to a worker.
+## Testing and operations
 
-## Task Lifecycle
-
-The domain status values are:
-
-- `PENDING`
-- `PROCESSING`
-- `COMPLETED`
-- `FAILED`
-- `RETRYING`
-- `CANCELLED`
-
-## Target Architecture
-
-- Java 21.
-- Spring Boot for the backend API.
-- Maven for builds.
-- PostgreSQL for users, tasks, statuses, and errors.
-- RabbitMQ for task distribution.
-- Worker process or module for CSV processing.
-- MinIO locally as an S3-compatible object store.
-- Docker and Docker Compose for local orchestration.
-- Prometheus and Grafana for observability.
-- Kubernetes in a later phase only.
-- Simple web frontend after backend stabilization.
-
-## Engineering Rules
-
-- Build one phase at a time.
-- Do not start RabbitMQ, MinIO, Kubernetes, Terraform, Helm, frontend, or
-  monitoring during the MVP.
-- Avoid unnecessary microservices.
-- Keep domain, application, infrastructure, and API concerns separated.
-- Prefer modular or hexagonal architecture.
-- Use dependency injection and SOLID design.
-- Validate inputs.
-- Use centralized error handling.
-- Document the API with OpenAPI/Swagger.
-- Use migrations for database schema changes.
-- Use UUIDs for externally exposed resources.
-- Never store heavy file contents directly in PostgreSQL.
-- Never commit secrets, credentials, generated tokens, or real local `.env` files.
-- Do not add a technology without documenting why it is useful.
-- Do not claim that tests passed unless they were actually executed.
-
-## Testing Expectations
-
-- Unit tests with JUnit and Mockito.
-- Integration tests with Testcontainers.
-- Run available tests before reporting completion.
-- Report real command results, including failures and skipped commands.
-
-## Repository Map
-
-- `backend/`: future Spring Boot API module.
-- `worker/`: future worker module or process.
-- `frontend/`: future React/Vite frontend.
-- `infra/docker/`: Docker and Docker Compose assets.
-- `infra/kubernetes/`: later Kubernetes manifests.
-- `infra/monitoring/`: later Prometheus and Grafana assets.
-- `docs/`: specifications, architecture, API notes, and backlog.
-
-## Documentation Rules
-
-- Update `docs/SPEC.md` when product behavior changes.
-- Update `docs/ARCHITECTURE.md` when system boundaries or technology choices change.
-- Update `docs/API.md` when API contracts change.
-- Update `docs/BACKLOG.md` when scope moves between phases.
-- Keep `README.md` aligned with actual commands and implemented capabilities.
+- Backend tests live in `backend/tests`; React tests live beside the UI components.
+- The PostgreSQL integration test uses Testcontainers and requires Docker.
+- Tests, builds, linters, Docker Compose, migrations, and Kubernetes commands must only be run when the current task explicitly authorizes them. Report only commands that actually ran.
+- `.env`, copied Kubernetes secrets, runtime data, and dependency directories must remain outside Git.

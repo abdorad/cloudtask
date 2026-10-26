@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: cloudtask
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudtask-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloudtask-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/CHANGE_ME/cloudtask-frontend:CHANGE_ME
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: cloudtask
+spec:
+  selector:
+    app.kubernetes.io/name: cloudtask-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

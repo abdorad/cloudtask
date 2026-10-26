@@ -1,0 +1,30 @@
+# Apply after cloudtask-migrate completes and before the API deployment.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloudtask-bootstrap-user
+  namespace: cloudtask
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bootstrap-user
+          image: ghcr.io/CHANGE_ME/cloudtask-api:CHANGE_ME
+          command: ["python", "/app/create-initial-user.py"]
+          envFrom:
+            - configMapRef:
+                name: cloudtask-config
+            - secretRef:
+                name: cloudtask-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

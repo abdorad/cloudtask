@@ -1,0 +1,15 @@
+# Production dependencies are pinned so Docker and local installations resolve
+# the same direct package versions. Development-only packages are in pyproject.toml.
+aio-pika==9.5.5
+alembic==1.15.2
+boto3==1.37.18
+fastapi==0.115.12
+email-validator==2.2.0
+pwdlib[argon2]==0.2.1
+PyJWT==2.10.1
+prometheus-client==0.21.1
+psycopg[binary]==3.2.6
+pydantic-settings==2.8.1
+python-multipart==0.0.20
+SQLAlchemy==2.0.40
+uvicorn[standard]==0.34.0

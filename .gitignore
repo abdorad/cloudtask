@@ -1,11 +1,18 @@
-# Build output
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
 target/
-build/
-dist/
-out/
 
-# Dependencies
+# JavaScript
 node_modules/
+dist/
+coverage/
 
 # Runtime and logs
 *.log
@@ -15,14 +22,16 @@ node_modules/
 .env
 .env.*
 !.env.example
+infra/kubernetes/base/secret.yaml
+
+# Local walkthrough inputs and generated reports (do not remove local copies).
+/sample.csv
+/report.json
+/uploads/
+/reports/
 
 # IDE and OS files
 .idea/
 .vscode/
-*.iml
 .DS_Store
 Thumbs.db
-
-# Temporary files
-tmp/
-temp/

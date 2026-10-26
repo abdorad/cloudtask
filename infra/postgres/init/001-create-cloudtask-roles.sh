@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+set -eu
+
+: "${CLOUDTASK_POSTGRES_MIGRATION_USER:?CLOUDTASK_POSTGRES_MIGRATION_USER is required}"
+: "${CLOUDTASK_POSTGRES_MIGRATION_PASSWORD:?CLOUDTASK_POSTGRES_MIGRATION_PASSWORD is required}"
+: "${CLOUDTASK_POSTGRES_APPLICATION_USER:?CLOUDTASK_POSTGRES_APPLICATION_USER is required}"
+: "${CLOUDTASK_POSTGRES_APPLICATION_PASSWORD:?CLOUDTASK_POSTGRES_APPLICATION_PASSWORD is required}"
+
+if [ "$POSTGRES_USER" = "$CLOUDTASK_POSTGRES_MIGRATION_USER" ] \
+    || [ "$POSTGRES_USER" = "$CLOUDTASK_POSTGRES_APPLICATION_USER" ] \
+    || [ "$CLOUDTASK_POSTGRES_MIGRATION_USER" = "$CLOUDTASK_POSTGRES_APPLICATION_USER" ]; then
+    echo >&2 "PostgreSQL administrator, migration, and application role names must be different."
+    exit 2
+fi
+
+psql --set=ON_ERROR_STOP=1 \
+    --username "$POSTGRES_USER" \
+    --dbname "$POSTGRES_DB" \
+    --set=migration_user="$CLOUDTASK_POSTGRES_MIGRATION_USER" \
+    --set=migration_password="$CLOUDTASK_POSTGRES_MIGRATION_PASSWORD" \
+    --set=application_user="$CLOUDTASK_POSTGRES_APPLICATION_USER" \
+    --set=application_password="$CLOUDTASK_POSTGRES_APPLICATION_PASSWORD" \
+    --set=database_name="$POSTGRES_DB" <<'EOSQL'
+CREATE ROLE :"migration_user" LOGIN PASSWORD :'migration_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+CREATE ROLE :"application_user" LOGIN PASSWORD :'application_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+
+REVOKE CONNECT ON DATABASE :"database_name" FROM PUBLIC;
+GRANT CONNECT ON DATABASE :"database_name" TO :"migration_user", :"application_user";
+
+ALTER SCHEMA public OWNER TO :"migration_user";
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO :"migration_user";
+GRANT USAGE ON SCHEMA public TO :"application_user";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE :"migration_user" IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"application_user";
+ALTER DEFAULT PRIVILEGES FOR ROLE :"migration_user" IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO :"application_user";
+EOSQL
